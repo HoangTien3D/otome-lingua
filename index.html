@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Otome Lingua - Language Learning Dating Sim</title>
+  <title>Otome | My Love Language</title>
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
@@ -14,8 +14,21 @@
     <!-- Mystic Messenger Status Bar -->
     <div class="status-bar">
       <span class="clock" id="liveClock">11:42 PM</span>
-      <span>OTOME LINGUA CHAT</span>
+      <span>My Love Language</span>
       <span id="signalBattery">📶 5G  🔋 98%</span>
+    </div>
+
+    <!-- Floating LI Incoming Message / Pout Toast Notification Banner -->
+    <div id="liNotificationToast" class="li-toast-banner" style="display:none;">
+      <img id="toastAvatar" src="" class="toast-avatar" alt="Avatar" />
+      <div class="toast-content">
+        <div class="toast-header">
+          <span id="toastName" class="toast-name">Ren Takahashi</span>
+          <span id="toastTag" class="toast-tag">💬 Incoming Message</span>
+        </div>
+        <div id="toastText" class="toast-text">ねえ、今何してる？</div>
+      </div>
+      <button id="toastReplyBtn" class="toast-action-btn">Reply</button>
     </div>
 
     <!-- App Top Navigation Header -->
@@ -23,7 +36,7 @@
       <div class="app-brand">
         <div class="app-logo-icon">❤️</div>
         <div>
-          <h1 class="app-title">Otome Lingua</h1>
+          <h1 class="app-title">My Love Language</h1>
         </div>
       </div>
 
@@ -101,18 +114,26 @@
         <div class="settings-group">
           <div class="settings-label">☁️ Convex Cloud Backend Sync</div>
           <p style="font-size:11px; color:var(--text-muted);">
-            HTTP Actions URL: <code style="color:#ffcc00;">https://wary-reindeer-174.convex.site</code>
+            HTTP Actions URL: <code style="color:var(--accent-gold);">https://wary-reindeer-174.convex.site</code>
           </p>
-          <button class="primary-btn" id="manualSyncBtn" style="background: linear-gradient(135deg, #00f0b5, #0088ff); color:#000;">
+          <button class="primary-btn" id="manualSyncBtn" style="background: linear-gradient(135deg, #059669, #2563eb); color:#fff;">
             Sync Progress Now to Convex
           </button>
         </div>
 
-        <div class="settings-group">
-          <div class="settings-label">💡 Secret Dashboard Shortcut</div>
-          <p style="font-size:12px; color:var(--text-muted);">
-            Press <kbd style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; color:#fff;">CTRL + SHIFT + ALT</kbd> anywhere in the application to reveal the secret analytics & telemetry dashboard.
+        <div class="settings-group" style="border: 1px solid rgba(230, 0, 92, 0.35); background: rgba(230, 0, 92, 0.04);">
+          <div class="settings-label" style="color: var(--primary-pink); display:flex; align-items:center; gap:6px;">
+            <span>🔄 Reset Story & Chat Progress</span>
+          </div>
+          <p style="font-size:11px; color:var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+            Wipe all chat histories, reset affection levels back to initial nonchalant states, and restart story choices for a fresh experience.
           </p>
+          <button class="primary-btn" id="resetStoryBtn" type="button" style="background: linear-gradient(135deg, #e6005c, #b30047); color:#fff;">
+            Reset All Story Progress & Replay
+          </button>
+          <div id="resetSuccessMessage" style="display:none; margin-top:10px; padding:8px 12px; background:rgba(5, 150, 105, 0.1); border:1px solid rgba(5, 150, 105, 0.3); border-radius:10px; font-size:12px; font-weight:700; color:var(--accent-emerald); text-align:center;">
+            ✓ All story progress and chat histories have been reset!
+          </div>
         </div>
       </section>
 
@@ -129,6 +150,9 @@
               <span>● Online</span> | <span id="chatHeaderTier">Tier 1: Baby Talk</span> | <span id="chatHeaderAffection">❤️ 45%</span>
             </div>
           </div>
+          <button id="romajiToggleBtn" type="button" style="background: rgba(217, 0, 87, 0.08); border: 1px solid rgba(217, 0, 87, 0.3); color: var(--primary-pink); border-radius: 12px; padding: 5px 10px; font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap; transition: all 0.2s ease;">
+            🔤 Romaji: ON
+          </button>
         </div>
 
         <!-- Chat History Message Stream -->
@@ -139,8 +163,25 @@
         <!-- Dynamic Chat Input Controls (Swaps based on Tier) -->
         <div class="chat-controls">
           <div class="tier-input-indicator">
-            <span id="tierModeLabel">Tier 1 Mode: Multiple Choice Options</span>
-            <span style="color:var(--primary-pink);" id="tierHeartMultiplier">+10 ❤️ / correct answer</span>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span id="tierModeLabel" style="font-weight:700;">Tier 1</span>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <label for="tierSelectDropdown" style="font-size:11px; color:var(--text-muted); font-weight:700;">Select Level:</label>
+                <select id="tierSelectDropdown" class="tier-dropdown-select">
+                  <option value="1">Tier 1: Baby Talk (Greetings)</option>
+                  <option value="2">Tier 2: First Impressions</option>
+                  <option value="3">Tier 3: Coffee Date</option>
+                  <option value="4">Tier 4: Word Builder</option>
+                  <option value="5">Tier 5: Daily Routines</option>
+                  <option value="6">Tier 6: Flirting & Compliments</option>
+                  <option value="7">Tier 7: Heart-to-Heart</option>
+                  <option value="8">Tier 8: Advanced Romance</option>
+                  <option value="9">Tier 9: Poetic Fluency</option>
+                  <option value="10">Tier 10: Soulmate Mastery</option>
+                </select>
+              </div>
+            </div>
+            <span style="color:var(--primary-pink); font-size:11px;" id="tierHeartMultiplier">+10 ❤️ / answer</span>
           </div>
 
           <!-- Tier 1-3: Multiple Choice Container -->
@@ -210,7 +251,7 @@
   <div class="secret-dashboard-overlay" id="secretDashboard">
     <div class="dash-header">
       <div class="dash-title">
-        <span>⚡ OTOME LINGUA TELEMETRY & MANAGEMENT DASHBOARD</span>
+        <span>⚡ MLL TELEMETRY & MANAGEMENT DASHBOARD</span>
       </div>
       <button id="closeDashBtn" style="background:transparent; border:1px solid #00ffcc; color:#00ffcc; padding:4px 12px; border-radius:6px; cursor:pointer; font-family:monospace;">
         CLOSE [ESC]
@@ -259,6 +300,66 @@
     <div class="dash-log-box" id="dashLogBox">
       [SYSTEM] Secret Dashboard Initialized.<br/>
       [KEYBIND] CTRL + SHIFT + ALT active listener attached.<br/>
+    </div>
+  </div>
+
+  <!-- MEMORY CG UNLOCK POPUP MODAL -->
+  <div id="memoryUnlockModal" class="modal-overlay" style="display:none;">
+    <div class="modal-card memory-unlock-card">
+      <div class="memory-unlock-sparkles">✨ 💖 ✨</div>
+      <div class="memory-unlock-badge">NEW MEMORY CG UNLOCKED!</div>
+      
+      <!-- CG Card Frame -->
+      <div id="unlockCgFrame" class="memory-cg-frame">
+        <div id="unlockCgIcon" class="cg-icon">🎸</div>
+        <div id="unlockCgTitle" class="cg-title">Moonlight Strumming</div>
+        <div id="unlockCgSub" class="cg-sub">25% Affection Milestone</div>
+      </div>
+
+      <div class="memory-quote-box">
+        <div id="unlockQuoteText" class="memory-quote">"君の聴いている顔が、すごく綺麗だった。"</div>
+        <div id="unlockQuoteRomaji" class="memory-romaji">Kimi no kiite iru kao ga, sugoku kirei datta.</div>
+        <div id="unlockQuoteTrans" class="memory-translation">💬 "The expression on your face as you listened was so beautiful."</div>
+      </div>
+
+      <p id="unlockDescText" class="memory-desc">
+        After practice, Ren played a gentle solo acoustic song just for you under the silver moonlight.
+      </p>
+
+      <div style="display:flex; gap:10px; width:100%; margin-top:16px;">
+        <button id="openGalleryBtn" class="primary-btn" style="flex:1; background: linear-gradient(135deg, #7c3aed, #db2777);">
+          🖼️ View Gallery
+        </button>
+        <button id="closeUnlockModalBtn" class="primary-btn" style="flex:1;">
+          ❤️ Continue Romance
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEMORY GALLERY MODAL -->
+  <div id="memoryGalleryModal" class="modal-overlay" style="display:none;">
+    <div class="modal-card gallery-modal-card">
+      <div class="gallery-header">
+        <div>
+          <h2 style="font-size:18px; font-weight:800; color:#fff; display:flex; align-items:center; gap:6px;">
+            🖼️ Romantic Memory CG Gallery
+          </h2>
+          <p style="font-size:11px; color:var(--text-muted);">Unlock CGs at 25%, 50%, 75%, and 100% affection milestones!</p>
+        </div>
+        <button id="closeGalleryModalBtn" class="close-modal-icon">✕</button>
+      </div>
+
+      <div class="gallery-filter-tabs">
+        <button class="gallery-tab active" data-filter="all">All LIs</button>
+        <button class="gallery-tab" data-filter="ren">Ren 🇯🇵</button>
+        <button class="gallery-tab" data-filter="bao">Bao 🇻🇳</button>
+        <button class="gallery-tab" data-filter="julian">Julian 🇬🇧</button>
+      </div>
+
+      <div class="gallery-grid" id="galleryGridContainer">
+        <!-- Populated dynamically by app.js -->
+      </div>
     </div>
   </div>
 
