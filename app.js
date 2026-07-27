@@ -778,12 +778,14 @@ function initOpenRouterKey() {
 
 function updateKeySavedStatus(isSaved) {
   const statusEl = document.getElementById("keySavedStatus");
-  if (isSaved) {
-    statusEl.textContent = "Key Active";
-    statusEl.style.color = "var(--accent-emerald)";
-  } else {
-    statusEl.textContent = "Fallback AI Mode";
-    statusEl.style.color = "var(--accent-gold)";
+  if (statusEl) {
+    if (isSaved) {
+      statusEl.textContent = "OpenRouter Key Active (Gemma 4)";
+      statusEl.style.color = "var(--accent-emerald)";
+    } else {
+      statusEl.textContent = "Gemma 4 Server AI Active";
+      statusEl.style.color = "var(--accent-emerald)";
+    }
   }
 }
 
@@ -1301,10 +1303,10 @@ function addUserMessageToHistory(text) {
   renderChatHistory();
 }
 
-// LLM Integration with Gemma 4 via OpenRouter API (+ Fallback Engine)
+// LLM Integration with Gemma 4 via /api/chat backend
 async function triggerLLMResponse(userText, tierObj) {
   analyticsData.apiCalls++;
-  const apiKey = localStorage.getItem("openrouter_api_key");
+  const openRouterKey = localStorage.getItem("openrouter_api_key");
   const char = CHARACTERS[activeCharacterId];
 
   // Show "Typing..." indicator in chat
@@ -1312,89 +1314,39 @@ async function triggerLLMResponse(userText, tierObj) {
 
   let responseData = null;
 
-  if (apiKey) {
-    try {
-      logDashboardEvent(`Sending OpenRouter API call (${OPENROUTER_MODEL}) for ${char.name}...`);
-      
-      const prompt = `You are playing the role of ${char.name}, a handsome Otome dating sim character from Otome Lingua.
-Target Language taught: ${char.language}.
-Personality & Evolution Directive: ${char.personality}.
+  try {
+    logDashboardEvent(`Sending AI request to /api/chat for ${char.name}...`);
+    
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        characterId: activeCharacterId,
+        userText: userText,
+        tierName: tierObj.name,
+        openRouterKey: openRouterKey || null
+      }),
+    });
 
-CRITICAL SHORT TEXT RULE FOR BEGINNERS:
-- Keep 'characterResponse' EXTREMELY SHORT and simple (1 short sentence, 3 to 8 words maximum).
-- The user is a beginner language learner. Never write long, complex sentences or multiple paragraphs!
-
-CRITICAL DYNAMIC TONE INSTRUCTION:
-- You start off composed, cool, nonchalant, and slightly reserved or casual.
-- As the user chats and affection increases, you gradually become more interested, intrigued, warm, and subtly affectionate.
-
-Current User Difficulty Tier: ${tierObj.name}.
-User just said: "${userText}".
-
-CRITICAL LANGUAGE RULE:
-1. 'characterResponse' MUST BE 100% IN ${char.language.toUpperCase()} ONLY! Do NOT mix English inside 'characterResponse' (unless target language is English).
-${char.language === "Japanese" ? "2. CRITICAL JAPANESE ROMAJI RULE: Provide the exact Romanji (latin alphabet pronunciation) in 'romaji' (e.g. 'A, konnichiwa. Nani ka you desu ka?')." : "2. Set 'romaji' to null."}
-3. Provide full English translation in 'translation'.
-4. Provide a helpful grammar/vocabulary tip in 'tip'.
-5. Provide a gentle correction in 'fix' if the user made a grammar/vocab mistake (or null if none).
-6. For Tier 1-3, provide 3 short, simple options in ${char.language} for the user's NEXT turn in 'nextMcOptions': [{"text": "short phrase in ${char.language}", "hint": "English hint"}].
-
-Respond strictly in valid JSON format with these exact keys:
-{
-  "characterResponse": "short 100% ${char.language} text",
-  "romaji": ${char.language === "Japanese" ? '"Romanized reading"' : "null"},
-  "translation": "English translation",
-  "tip": "Grammar/vocab tip",
-  "fix": "Gentle correction or null",
-  "nextMcOptions": [
-    { "text": "Option 1", "hint": "Hint 1" },
-    { "text": "Option 2", "hint": "Hint 2" },
-    { "text": "Option 3", "hint": "Hint 3" }
-  ],
-  "affectionChange": 5
-}`;
-
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "HTTP-Referer": window.location.origin,
-          "X-Title": "Otome Lingua",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: OPENROUTER_MODEL,
-          messages: [
-            { role: "system", content: "You are a language tutor in a romantic Otome game. Always reply in valid JSON." },
-            { role: "user", content: prompt },
-          ],
-          temperature: 0.7,
-        }),
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        const content = json.choices[0].message.content;
-        try {
-          responseData = JSON.parse(content);
-        } catch {
-          // If JSON wrapped in ```json block
-          const clean = content.replace(/```json/g, "").replace(/```/g, "").trim();
-          responseData = JSON.parse(clean);
-        }
-        if (responseData && responseData.nextMcOptions) {
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        responseData = json.data;
+        if (responseData.nextMcOptions && responseData.nextMcOptions.length > 0) {
           dynamicMcOptions[char.id] = responseData.nextMcOptions;
         }
-        logDashboardEvent(`OpenRouter API response received successfully.`);
-      } else {
-        logDashboardEvent(`OpenRouter API returned status ${res.status}. Switching to Fallback Engine.`);
+        logDashboardEvent(`AI response received successfully (${json.engineUsed || 'Gemma 4'}).`);
       }
-    } catch (err) {
-      logDashboardEvent(`OpenRouter API call failed: ${err.message}. Using Fallback Engine.`);
+    } else {
+      logDashboardEvent(`Server /api/chat returned status ${res.status}.`);
     }
+  } catch (err) {
+    logDashboardEvent(`AI request error: ${err.message}.`);
   }
 
-  // Fallback Engine if API key missing or call failed
+  // Fallback Engine if API call failed
   if (!responseData) {
     responseData = generateFallbackResponse(char, userText, tierObj);
   }
